@@ -59,53 +59,43 @@ function httpUrl(value, label) {
   return parsed.toString().replace(/\/$/, '');
 }
 
+function monitorHost(value) {
+  return new URL(value).hostname.toLowerCase();
+}
+
 const config = {
   host: required('STATUS_HOST'),
   port: positiveInteger('STATUS_PORT'),
   requestTimeoutMs: positiveInteger('STATUS_REQUEST_TIMEOUT_MS'),
   resultCacheMs: positiveInteger('STATUS_RESULT_CACHE_MS'),
   clientRefreshMs: positiveInteger('STATUS_CLIENT_REFRESH_MS'),
-  routeConcurrency: positiveInteger('STATUS_ROUTE_CONCURRENCY'),
-  apiHealthPath: required('STATUS_API_HEALTH_PATH'),
-  apiHomePath: required('STATUS_API_HOME_PATH'),
-  serviceWorkerPath: required('STATUS_WEB_SERVICE_WORKER_PATH'),
+  monitorListLimit: positiveInteger('UPTIMEROBOT_MONITOR_LIST_LIMIT'),
+  apiUrl: httpUrl(required('UPTIMEROBOT_API_URL'), 'UPTIMEROBOT_API_URL'),
+  apiKey: process.env.UPTIMEROBOT_API_KEY?.trim() ?? '',
   dashboardApiPath: required('STATUS_DASHBOARD_API_PATH'),
-  serviceWorkerCacheMarker: required('STATUS_SERVICE_WORKER_CACHE_MARKER'),
-  primaryEnvironment: required('STATUS_PRIMARY_ENVIRONMENT'),
-  environments: jsonEnvironment('STATUS_ENVIRONMENTS_JSON'),
-  routes: jsonEnvironment('STATUS_WEB_ROUTE_PATHS_JSON'),
+  monitors: jsonEnvironment('UPTIMEROBOT_MONITORS_JSON'),
 };
 
-if (!Array.isArray(config.environments) || config.environments.length === 0) {
-  throw new Error('STATUS_ENVIRONMENTS_JSON must be a non-empty array');
-}
-config.environments = config.environments.map((environment) => {
-  for (const field of ['id', 'label', 'badge', 'webUrl', 'apiUrl']) {
-    if (typeof environment[field] !== 'string' || !environment[field].trim()) {
-      throw new Error(`Each status environment requires ${field}`);
-    }
-  }
-  return {
-    ...environment,
-    webUrl: httpUrl(environment.webUrl, `${environment.id}.webUrl`),
-    apiUrl: httpUrl(environment.apiUrl, `${environment.id}.apiUrl`),
-  };
-});
-if (!config.environments.some((environment) => environment.id === config.primaryEnvironment)) {
-  throw new Error('STATUS_PRIMARY_ENVIRONMENT must match an environment id');
-}
-for (const name of ['apiHealthPath', 'apiHomePath', 'serviceWorkerPath']) {
-  if (!config[name].startsWith('/') || config[name].startsWith('//')) {
-    throw new Error(`${name} must be an absolute path on its configured service`);
-  }
-}
 if (!/^\/[A-Za-z0-9/_-]+$/.test(config.dashboardApiPath)) {
   throw new Error('STATUS_DASHBOARD_API_PATH must be a local absolute path');
 }
-if (!Array.isArray(config.routes) || config.routes.length === 0 || config.routes.some((path) =>
-  typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//')
-)) {
-  throw new Error('STATUS_WEB_ROUTE_PATHS_JSON must be a non-empty array of local paths');
+if (!Array.isArray(config.monitors) || config.monitors.length !== 3) {
+  throw new Error('UPTIMEROBOT_MONITORS_JSON must contain exactly three monitors');
+}
+config.monitors = config.monitors.map((monitor) => {
+  for (const field of ['id', 'label', 'url']) {
+    if (typeof monitor[field] !== 'string' || !monitor[field].trim()) {
+      throw new Error(`Each UptimeRobot monitor requires ${field}`);
+    }
+  }
+  const url = httpUrl(monitor.url, `${monitor.id}.url`);
+  return { id: monitor.id, label: monitor.label, url, host: monitorHost(url) };
+});
+if (new Set(config.monitors.map((monitor) => monitor.id)).size !== config.monitors.length) {
+  throw new Error('UptimeRobot monitor ids must be unique');
+}
+if (new Set(config.monitors.map((monitor) => monitor.host)).size !== config.monitors.length) {
+  throw new Error('UptimeRobot monitor hosts must be unique');
 }
 
 let snapshotCache;
@@ -113,122 +103,95 @@ let snapshotCache;
 async function request(url) {
   return fetch(url, {
     cache: 'no-store',
-    redirect: 'follow',
+    headers: { Accept: 'application/json', Authorization: `Bearer ${config.apiKey}` },
     signal: AbortSignal.timeout(config.requestTimeoutMs),
   });
 }
 
-async function mapLimit(items, limit, run) {
-  const results = new Array(items.length);
-  let next = 0;
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const index = next++;
-      results[index] = await run(items[index]);
-    }
-  }));
-  return results;
+function monitorState(status) {
+  if (status === 'UP') return 'operational';
+  if (status === 'DOWN' || status === 'LOOKS_DOWN') return 'down';
+  if (status === 'PAUSED') return 'paused';
+  if (status === 'STARTED') return 'checking';
+  return 'unknown';
 }
 
-async function checkEnvironment(target) {
-  const pages = await mapLimit(config.routes, config.routeConcurrency, async (route) => {
-    try {
-      const response = await request(new URL(route, target.webUrl));
-      void response.body?.cancel().catch(() => undefined);
-      return {
-        path: route,
-        state: response.ok ? 'operational' : 'down',
-        detail: `HTTP ${response.status}`,
-      };
-    } catch {
-      return { path: route, state: 'down', detail: 'No response' };
-    }
-  });
+function apiErrorMessage(status) {
+  if (status === 401 || status === 403) return 'UptimeRobot rejected the API key';
+  if (status === 429) return 'UptimeRobot rate limit reached';
+  return `UptimeRobot request failed (HTTP ${status})`;
+}
 
-  const [healthResult, homeResult, workerResult] = await Promise.allSettled([
-    request(new URL(config.apiHealthPath, target.apiUrl)),
-    request(new URL(config.apiHomePath, target.apiUrl)),
-    request(new URL(config.serviceWorkerPath, target.webUrl)),
-  ]);
-
-  let api = 'down';
-  let database = 'unknown';
-  let cache = 'unknown';
-  let playback = 'unknown';
-  let version = null;
-  if (healthResult.status === 'fulfilled') {
-    try {
-      const body = await healthResult.value.json();
-      api = healthResult.value.ok && body.ok === true ? 'operational' : 'down';
-      database = body.db === 'up' ? 'operational' : body.db === 'down' ? 'down' : 'unknown';
-      cache = body.checks?.cache === 'up' ? 'operational' : body.checks?.cache === 'down' ? 'down' : 'unknown';
-      playback = body.checks?.playback === 'up' ? 'operational' : body.checks?.playback === 'down' ? 'down' : 'unknown';
-      version = typeof body.version === 'string' ? body.version : null;
-    } catch {
-      api = 'down';
-    }
+async function checkMonitor(target) {
+  if (!config.apiKey) {
+    return { ...target, state: 'unknown', detail: 'Add a read-only UptimeRobot API key in .env' };
   }
 
-  let home = 'down';
-  if (homeResult.status === 'fulfilled' && homeResult.value.ok) {
-    try {
-      const body = await homeResult.value.json();
-      home = Array.isArray(body.newTracks) && Array.isArray(body.popular) && Array.isArray(body.artists)
-        ? 'operational'
-        : 'down';
-    } catch {
-      home = 'down';
-    }
-  }
+  const url = new URL(config.apiUrl);
+  url.searchParams.set('url', target.host);
+  url.searchParams.set('limit', String(config.monitorListLimit));
 
-  let webCache = 'down';
-  if (workerResult.status === 'fulfilled' && workerResult.value.ok) {
-    try {
-      const script = await workerResult.value.text();
-      const cacheControl = workerResult.value.headers.get('cache-control') ?? '';
-      webCache = script.includes(config.serviceWorkerCacheMarker) && /no-cache|must-revalidate/.test(cacheControl)
-        ? 'operational'
-        : 'down';
-    } catch {
-      webCache = 'down';
+  try {
+    const response = await request(url);
+    if (!response.ok) {
+      return { ...target, state: 'unknown', detail: apiErrorMessage(response.status) };
     }
-  }
+    const body = await response.json();
+    if (!Array.isArray(body.data)) {
+      return { ...target, state: 'unknown', detail: 'Unexpected UptimeRobot response' };
+    }
 
-  return {
-    id: target.id,
-    label: target.label,
-    badge: target.badge,
-    webUrl: target.webUrl,
-    apiUrl: target.apiUrl,
-    apiHealthPath: config.apiHealthPath,
-    apiHomePath: config.apiHomePath,
-    serviceWorkerPath: config.serviceWorkerPath,
-    pages,
-    api,
-    home,
-    database,
-    cache,
-    playback,
-    webCache,
-    version,
-  };
+    const matches = body.data.filter((monitor) => {
+      if (typeof monitor.url !== 'string') return false;
+      try {
+        return monitorHost(monitor.url) === target.host;
+      } catch {
+        return false;
+      }
+    });
+    if (matches.length === 0) {
+      return { ...target, state: 'unknown', detail: 'No matching UptimeRobot monitor found' };
+    }
+    if (matches.length > 1) {
+      return { ...target, state: 'unknown', detail: 'More than one monitor matches this host' };
+    }
+
+    const monitor = matches[0];
+    const rawStatus = typeof monitor.status === 'string' ? monitor.status.toUpperCase() : '';
+    const state = monitorState(rawStatus);
+    return {
+      ...target,
+      state,
+      monitorName: typeof monitor.name === 'string' ? monitor.name : target.label,
+      detail: state === 'unknown' ? 'UptimeRobot returned an unrecognized monitor status' : rawStatus,
+      responseTime: Number.isFinite(monitor.responseTime) ? monitor.responseTime : null,
+    };
+  } catch {
+    return { ...target, state: 'unknown', detail: 'Could not reach the UptimeRobot API' };
+  }
 }
 
 async function getSnapshot(force = false) {
   if (!force && snapshotCache?.expiresAt > Date.now()) return snapshotCache.promise;
-  const promise = Promise.all(config.environments.map(checkEnvironment)).then((checks) => ({
+  const promise = Promise.all(config.monitors.map(checkMonitor)).then((monitors) => ({
     checkedAt: new Date().toISOString(),
-    primaryWebUrl: config.environments.find((environment) => environment.id === config.primaryEnvironment).webUrl,
     clientRefreshMs: config.clientRefreshMs,
-    dashboardApiPath: config.dashboardApiPath,
-    environments: checks,
+    monitors,
   }));
   snapshotCache = { expiresAt: Date.now() + config.resultCacheMs, promise };
   try {
     return await promise;
   } catch {
     snapshotCache = undefined;
-    return { checkedAt: new Date().toISOString(), primaryWebUrl: '', clientRefreshMs: config.clientRefreshMs, environments: [] };
+    return {
+      checkedAt: new Date().toISOString(),
+      clientRefreshMs: config.clientRefreshMs,
+      monitors: config.monitors.map((monitor) => ({
+        ...monitor,
+        state: 'unknown',
+        detail: 'Could not load the UptimeRobot status',
+      })),
+    };
   }
 }
 
@@ -255,8 +218,11 @@ async function serveFile(pathname, response) {
   try {
     let body = await readFile(filename);
     if (extname(filename) === '.html') {
-      const configTag = `<meta name="status-api-path" content="${config.dashboardApiPath}">`;
-      body = Buffer.from(body.toString('utf8').replace('</head>', `${configTag}</head>`));
+      const html = body.toString('utf8').replace(
+        '</head>',
+        `  <meta name="status-api-path" content="${config.dashboardApiPath}" />\n  </head>`,
+      );
+      body = Buffer.from(html);
     }
     response.writeHead(200, {
       'Content-Type': mimeTypes[extname(filename)] ?? 'application/octet-stream',
@@ -285,5 +251,5 @@ createServer(async (requestMessage, response) => {
   }
   await serveFile(pathname, response);
 }).listen(config.port, config.host, () => {
-  console.log(`Geet Status is listening on ${config.host}:${config.port}`);
+  console.log(`Geet status page listening on ${config.host}:${config.port}`);
 });

@@ -11,52 +11,30 @@
   <body>
     <main class="shell">
       <header class="masthead">
-        <a id="brand-link" class="brand" href="#" aria-label="Geet home">
+        <div class="brand" aria-label="Geet status">
           <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           <span>geet<span class="brand-dot">.</span></span>
-        </a>
+        </div>
         <span class="masthead-label">SYSTEM STATUS</span>
       </header>
-
       <section class="intro">
-        <div class="intro-copy">
+        <div>
           <p class="eyebrow">GEET SERVICE HEALTH</p>
           <h1>Everything in tune.</h1>
-          <p class="lede">Live checks across the Geet app, API, data, playback and caching.</p>
+          <p class="lede">Live uptime checks for Geet web, API and development.</p>
         </div>
         <button id="refresh" class="refresh-button" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4.9 9a7.5 7.5 0 0 1 12.8-2.1L20 12M4 17v-5h5m10.1 3a7.5 7.5 0 0 1-12.8 2.1L4 12" /></svg>
           <span>Refresh checks</span>
         </button>
       </section>
-
-      <section id="overall" class="overall checking" aria-live="polite">
+      <section id="overall" class="overall unknown" aria-live="polite">
         <span class="overall-icon" aria-hidden="true"></span>
-        <div class="overall-copy">
-          <strong id="overall-title">Checking Geet…</strong>
-          <span id="overall-description">Contacting configured services.</span>
-        </div>
+        <div class="overall-copy"><strong id="overall-title">Checking Geet…</strong><span id="overall-description">Loading monitor status.</span></div>
         <span id="checked-at" class="checked-at">First check</span>
       </section>
-
-      <section id="environments" class="environments" aria-label="Environment status">
-        <article class="environment-card loading-card" aria-busy="true">
-          <span class="skeleton skeleton-heading"></span>
-          <span class="skeleton skeleton-row"></span>
-          <span class="skeleton skeleton-row"></span>
-          <span class="skeleton skeleton-row"></span>
-        </article>
-      </section>
-
-      <aside class="note">
-        <span class="note-icon" aria-hidden="true">i</span>
-        <p>Route probes use the exact paths in the environment configuration. Add a valid resource URL for pages that require an existing record. Playback checks never start a song or add play counts.</p>
-      </aside>
-
-      <footer class="footer">
-        <span>Geet · Music sounds better together.</span>
-        <a id="footer-link" href="#">Back to Geet <span aria-hidden="true">↗</span></a>
-      </footer>
+      <section id="monitors" class="monitors" aria-label="Monitors" aria-busy="true"></section>
+      <footer class="footer"><span>Geet · Music sounds better together.</span><span>Powered by UptimeRobot</span></footer>
     </main>
   </body>
 </html>

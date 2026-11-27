@@ -1,21 +1,21 @@
 # Geet Status
 
-Standalone status dashboard kept separate from the Geet web and API projects.
+Standalone status dashboard for three UptimeRobot monitors: `listengeet.com`, the shared `api.listengeet.com` API, and `dev.listengeet.com`.
 
-## Run locally
+## Configure and run
 
 Requires Node.js 20 or newer. No package installation is needed.
 
+```powershell
+Copy-Item .env.example .env
+```
+
+Set `UPTIMEROBOT_API_KEY` in `.env` to a read-only UptimeRobot API key, then run:
+
 ```sh
-cd status
-Copy-Item .env.example .env  # PowerShell; on macOS/Linux use: cp .env.example .env
 npm start
 ```
 
-The server address comes from `STATUS_HOST` and `STATUS_PORT` in `.env`.
+The key is used only by the server and is never sent to the browser. Monitor URLs, labels, API endpoint, polling interval, cache duration, and server binding are configured through environment variables. The monitor list must contain exactly three unique hosts. The API is a shared monitor, so it appears once.
 
-The configured environments and exact route paths are in `STATUS_ENVIRONMENTS_JSON` and `STATUS_WEB_ROUTE_PATHS_JSON`. Timeout, route concurrency, cache duration, endpoint paths, and the service-worker cache marker are also environment settings. No service URL or runtime setting is embedded in the application code. Add a valid resource URL to the route list when checking pages that need an existing record.
-
-The server probes each configured frontend route, checks each configured API health and home-data endpoint, and verifies the configured service-worker script and its cache headers. It does not start playback or make changes to either environment.
-
-The database state comes from each API's health response. API cache and playback storage show as **Not reported** until that API deployment exposes `checks.cache` and `checks.playback` in the health response. The current health contract only reports database status, so the standalone page reports that honestly instead of guessing.
+The server queries UptimeRobot's v3 monitors API, matching each configured host to its monitor and displaying the returned monitor state. Without a key, the dashboard still loads and reports that live data is unavailable. Refreshing on the page uses a short server cache to limit API requests.
