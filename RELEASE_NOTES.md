@@ -20,3 +20,9 @@ Geet Status is a lightweight, standalone service-health dashboard for Geet.
 - The dashboard remains available without a key, but live monitor data is reported as unavailable.
 
 See [README.md](./README.md) and [.env.example](./.env.example) for setup instructions and configuration details.
+
+## v2.0.0 — Next.js migration
+
+- Rebuilt on Next.js (App Router, TypeScript); UI and styling unchanged.
+- First snapshot is server-rendered; `/api/status` is now a route handler.
+- Removed `STATUS_DASHBOARD_API_PATH`; `STATUS_PORT` replaced by `PORT`. Env defaults added for non-secret settings.

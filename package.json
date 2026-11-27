@@ -1,9 +1,27 @@
 {
   "name": "geet-status",
   "private": true,
-  "version": "1.0.0",
-  "type": "module",
+  "version": "2.0.0",
+  "description": "Geet's live service-status dashboard, built with Next.js.",
   "scripts": {
-    "start": "node server.mjs"
+    "dev": "next dev -H 127.0.0.1 -p 3020",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "next typegen && tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20.9"
+  },
+  "dependencies": {
+    "next": "^16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.11",
+    "@types/react": "^19.3.3",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "^7.0.2"
   }
 }
