@@ -200,6 +200,8 @@ const mimeTypes = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.woff2': 'font/woff2',
 };
 
 async function serveFile(pathname, response) {
@@ -227,7 +229,9 @@ async function serveFile(pathname, response) {
     response.writeHead(200, {
       'Content-Type': mimeTypes[extname(filename)] ?? 'application/octet-stream',
       'X-Content-Type-Options': 'nosniff',
-      'Cache-Control': extname(filename) === '.html' ? 'no-cache' : 'public, max-age=3600',
+      'Cache-Control': ['.html', '.css', '.js'].includes(extname(filename))
+        ? 'no-cache'
+        : 'public, max-age=3600',
     }).end(body);
   } catch {
     response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Not found');

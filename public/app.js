@@ -1,6 +1,7 @@
 const monitorList = document.querySelector('#monitors');
 const overall = document.querySelector('#overall');
 const refreshButton = document.querySelector('#refresh');
+const serviceCount = document.querySelector('#service-count');
 const statusEndpoint = document.querySelector('meta[name="status-api-path"]').content;
 let busy = false;
 let refreshTimer;
@@ -26,7 +27,7 @@ function renderMonitor(monitor) {
   const url = document.createElement('a');
   url.href = monitor.url;
   url.target = '_blank';
-  url.rel = 'noreferrer';
+  url.rel = 'noopener noreferrer';
   url.textContent = new URL(monitor.url).host;
   info.append(name, url);
   const status = document.createElement('span');
@@ -44,6 +45,7 @@ function renderMonitor(monitor) {
 
 function updateOverall(snapshot) {
   const states = snapshot.monitors.map((monitor) => monitor.state);
+  serviceCount.textContent = `${snapshot.monitors.length} services monitored`;
   const state = states.includes('down') ? 'down'
     : states.includes('unknown') ? 'unknown'
       : states.includes('paused') ? 'paused'
