@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#090a0b" />
+    <title>Geet Status</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <a class="brand" href="https://listengeet.com" aria-label="Geet home">
+          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+          <span>geet<span class="brand-dot">.</span></span>
+        </a>
+        <span class="masthead-label">SYSTEM STATUS</span>
+      </header>
+
+      <section class="intro">
+        <div class="intro-copy">
+          <p class="eyebrow">GEET SERVICE HEALTH</p>
+          <h1>Everything in tune.</h1>
+          <p class="lede">Live checks across the Geet app, API, data, playback and caching.</p>
+        </div>
+        <button id="refresh" class="refresh-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4.9 9a7.5 7.5 0 0 1 12.8-2.1L20 12M4 17v-5h5m10.1 3a7.5 7.5 0 0 1-12.8 2.1L4 12" /></svg>
+          <span>Refresh checks</span>
+        </button>
+      </section>
+
+      <section id="overall" class="overall checking" aria-live="polite">
+        <span class="overall-icon" aria-hidden="true"></span>
+        <div class="overall-copy">
+          <strong id="overall-title">Checking Geet…</strong>
+          <span id="overall-description">Contacting production and development services.</span>
+        </div>
+        <span id="checked-at" class="checked-at">First check</span>
+      </section>
+
+      <section id="environments" class="environments" aria-label="Environment status">
+        <article class="environment-card loading-card" aria-busy="true">
+          <span class="skeleton skeleton-heading"></span>
+          <span class="skeleton skeleton-row"></span>
+          <span class="skeleton skeleton-row"></span>
+          <span class="skeleton skeleton-row"></span>
+        </article>
+        <article class="environment-card loading-card" aria-busy="true">
+          <span class="skeleton skeleton-heading"></span>
+          <span class="skeleton skeleton-row"></span>
+          <span class="skeleton skeleton-row"></span>
+          <span class="skeleton skeleton-row"></span>
+        </article>
+      </section>
+
+      <aside class="note">
+        <span class="note-icon" aria-hidden="true">i</span>
+        <p>Dynamic pages use safe sample URLs. A missing sample record is expected. Playback checks never start a song or add play counts.</p>
+      </aside>
+
+      <footer class="footer">
+        <span>Geet · Music sounds better together.</span>
+        <a href="https://listengeet.com">Back to Geet <span aria-hidden="true">↗</span></a>
+      </footer>
+    </main>
+  </body>
+</html>
