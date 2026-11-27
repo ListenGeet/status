@@ -2,7 +2,9 @@ const environments = document.querySelector('#environments');
 const overall = document.querySelector('#overall');
 const refreshButton = document.querySelector('#refresh');
 const refreshIcon = refreshButton.querySelector('svg');
+const statusEndpoint = document.querySelector('meta[name="status-api-path"]').content;
 let busy = false;
+let refreshTimer;
 
 const stateLabel = (state) => ({
   operational: 'Operational',
@@ -38,7 +40,8 @@ function renderEnvironment(environment) {
 
   const heading = document.createElement('div');
   heading.className = 'environment-heading';
-  heading.innerHTML = `<div><p class="environment-kicker">${environment.id === 'production' ? 'LIVE' : 'PREVIEW'}</p><h2></h2></div><a class="open-link" target="_blank" rel="noreferrer">Open site ↗</a>`;
+  heading.innerHTML = '<div><p class="environment-kicker"></p><h2></h2></div><a class="open-link" target="_blank" rel="noreferrer">Open site ↗</a>';
+  heading.querySelector('.environment-kicker').textContent = safeText(environment.badge);
   heading.querySelector('h2').textContent = safeText(environment.label);
   heading.querySelector('a').href = environment.webUrl;
   card.append(heading);
@@ -53,7 +56,7 @@ function renderEnvironment(environment) {
   list.append(
     serviceRow('◎', 'Web app routes', `${environment.webUrl} · ${environment.pages.filter((page) => page.state === 'operational').length}/${environment.pages.length} responding`, pageState),
     serviceRow('⇄', 'API', environment.apiUrl, environment.api, environment.version ? `v${safeText(environment.version)}` : ''),
-    serviceRow('♫', 'Home and catalogue data', 'GET /api/home', environment.home),
+    serviceRow('♫', 'Home and catalogue data', `GET ${environment.apiHomePath}`, environment.home),
     serviceRow('▦', 'Database', 'Live API database ping', environment.database),
     serviceRow('◫', 'API read cache', 'Reported by the API health endpoint', environment.cache),
     serviceRow('♫', 'Playback storage', 'Preview availability and guest URL signing', environment.playback),
@@ -102,8 +105,9 @@ function updateOverall(snapshot) {
     : state === 'down'
       ? 'Some checks need attention'
       : 'Some checks could not be verified';
+  const environmentNames = snapshot.environments.map((environment) => environment.label).join(' and ');
   document.querySelector('#overall-description').textContent = state === 'operational'
-    ? 'Production and development checks are responding.'
+    ? `${environmentNames} checks are responding.`
     : state === 'down'
       ? 'One or more live checks returned an error.'
       : 'Some deployed services do not yet report detailed cache or playback health.';
@@ -116,15 +120,21 @@ async function loadStatus(force = false) {
   refreshButton.disabled = true;
   refreshIcon.classList.add('spinning');
   try {
-    const response = await fetch(`/api/status${force ? '?refresh=1' : ''}`, { cache: 'no-store' });
+    const response = await fetch(`${statusEndpoint}${force ? '?refresh=1' : ''}`, { cache: 'no-store' });
     if (!response.ok) throw new Error('Status service returned an error');
     const snapshot = await response.json();
     environments.replaceChildren();
     if (!snapshot.environments.length) throw new Error('No environment checks returned');
+    document.querySelector('#brand-link').href = snapshot.primaryWebUrl;
+    document.querySelector('#footer-link').href = snapshot.primaryWebUrl;
     for (const environment of snapshot.environments) {
       environments.append(renderEnvironment(environment).card);
     }
     updateOverall(snapshot);
+    window.clearInterval(refreshTimer);
+    refreshTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void loadStatus();
+    }, snapshot.clientRefreshMs);
   } catch {
     environments.innerHTML = '<div class="error">Could not load live checks. Make sure the status server is running and try again.</div>';
     overall.className = 'overall unknown';
@@ -139,6 +149,3 @@ async function loadStatus(force = false) {
 
 refreshButton.addEventListener('click', () => loadStatus(true));
 void loadStatus();
-window.setInterval(() => {
-  if (document.visibilityState === 'visible') void loadStatus();
-}, 60_000);

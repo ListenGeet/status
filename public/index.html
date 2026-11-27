@@ -11,7 +11,7 @@
   <body>
     <main class="shell">
       <header class="masthead">
-        <a class="brand" href="https://listengeet.com" aria-label="Geet home">
+        <a id="brand-link" class="brand" href="#" aria-label="Geet home">
           <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           <span>geet<span class="brand-dot">.</span></span>
         </a>
@@ -34,7 +34,7 @@
         <span class="overall-icon" aria-hidden="true"></span>
         <div class="overall-copy">
           <strong id="overall-title">Checking Geet…</strong>
-          <span id="overall-description">Contacting production and development services.</span>
+          <span id="overall-description">Contacting configured services.</span>
         </div>
         <span id="checked-at" class="checked-at">First check</span>
       </section>
@@ -46,22 +46,16 @@
           <span class="skeleton skeleton-row"></span>
           <span class="skeleton skeleton-row"></span>
         </article>
-        <article class="environment-card loading-card" aria-busy="true">
-          <span class="skeleton skeleton-heading"></span>
-          <span class="skeleton skeleton-row"></span>
-          <span class="skeleton skeleton-row"></span>
-          <span class="skeleton skeleton-row"></span>
-        </article>
       </section>
 
       <aside class="note">
         <span class="note-icon" aria-hidden="true">i</span>
-        <p>Dynamic pages use safe sample URLs. A missing sample record is expected. Playback checks never start a song or add play counts.</p>
+        <p>Route probes use the exact paths in the environment configuration. Add a valid resource URL for pages that require an existing record. Playback checks never start a song or add play counts.</p>
       </aside>
 
       <footer class="footer">
         <span>Geet · Music sounds better together.</span>
-        <a href="https://listengeet.com">Back to Geet <span aria-hidden="true">↗</span></a>
+        <a id="footer-link" href="#">Back to Geet <span aria-hidden="true">↗</span></a>
       </footer>
     </main>
   </body>
