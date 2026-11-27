@@ -4,6 +4,13 @@ import type { StatusSnapshot } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Geet Status',
+  url: 'https://status.listengeet.com',
+};
+
 export default async function Page() {
   let initial: StatusSnapshot | null = null;
   try {
@@ -11,5 +18,15 @@ export default async function Page() {
   } catch {
     initial = null; // client will show "Checks unavailable"
   }
-  return <Dashboard initial={initial} />;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredData).replace(/</g, '\\u003c'),
+        }}
+      />
+      <Dashboard initial={initial} />
+    </>
+  );
 }

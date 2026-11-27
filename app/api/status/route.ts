@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 const headers = {
   'Cache-Control': 'no-store',
   'X-Content-Type-Options': 'nosniff',
+  'X-Robots-Tag': 'noindex, nofollow',
 };
 
 export async function GET(request: Request) {

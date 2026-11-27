@@ -26,3 +26,4 @@ See [README.md](./README.md) and [.env.example](./.env.example) for setup instru
 - Rebuilt on Next.js (App Router, TypeScript); UI and styling unchanged.
 - First snapshot is server-rendered; `/api/status` is now a route handler.
 - Removed `STATUS_DASHBOARD_API_PATH`; `STATUS_PORT` replaced by `PORT`. Env defaults added for non-secret settings.
+- Added the Next.js favicon convention, canonical metadata, structured site data, crawler rules, a sitemap, and branded social previews.

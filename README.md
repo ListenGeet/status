@@ -29,6 +29,8 @@ This standalone Next.js (App Router, TypeScript) dashboard checks Geet's web app
 
 The API is shared by the services and is listed once. The dashboard shows each monitor's current state, the time of the last check, and any details returned when a check cannot be verified. Checks refresh automatically while the page is open; use **Refresh checks** to request an immediate update.
 
+Search engines can discover the status page through `/robots.txt` and `/sitemap.xml`. The JSON status endpoint is excluded from indexing, and link previews use Geet's branded social image.
+
 ## Run locally
 
 Requires Node.js 20.9 or newer.
